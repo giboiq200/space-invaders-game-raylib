@@ -2,6 +2,13 @@
 #include <iostream>
 #include <vector>
 
+enum GameState {
+	Menu,
+	Play,
+	Pause,
+	GameOver
+};
+
 int width = 700;
 int height = 700;
 
@@ -95,48 +102,109 @@ int main() {
 	int spacing = 80;
 	float spawnTimer = 0;
 	float spawnInterval = 4.5;
+	bool ispaused = false;
+	int score = 0;
+
+	GameState currentState = Menu;
 
 	for (int i = 0; i < 7; i++) {
 		enemies.push_back(Enemy(100 + i * spacing, 40));
 	}
 	//game loop
 	while (!WindowShouldClose()) {
-		spawnTimer += GetFrameTime();
-		if (spawnTimer >= spawnInterval) {
-			for (int i = 0; i < 7; i++) {
-				enemies.push_back(Enemy(100 + i * spacing, 40));
+		switch (currentState)
+		{
+		case Menu:
+			if (IsKeyPressed(KEY_ENTER)) {
+				spawnTimer = 3;
+				currentState = Play;
 			}
-			spawnTimer = 0;
-		}
-		//Update logic
-		player.Update();
-		if (IsKeyPressed(KEY_SPACE)) {
-			bullets.push_back(Bullet(player.x + player.w / 2, player.y));
-		}
-		for (int i = 0; i < bullets.size(); i++) {
-			bullets[i].Update();
-		}
-		for (auto& enemy : enemies) {
-			enemy.Update();
-		}
-		//collision enemy bullet
-		for (auto& bullet : bullets) {
+			break;
+		case Play:
+			spawnTimer += GetFrameTime();
+			if (spawnTimer >= spawnInterval) {
+				for (int i = 0; i < 7; i++) {
+					enemies.push_back(Enemy(100 + i * spacing, 40));
+				}
+				spawnTimer = 0;
+			}
+			//Update logic
+			player.Update();
+			if (IsKeyPressed(KEY_SPACE)) {
+				bullets.push_back(Bullet(player.x + player.w / 2, player.y));
+			}
+			for (int i = 0; i < bullets.size(); i++) {
+				bullets[i].Update();
+			}
 			for (auto& enemy : enemies) {
-				if (bullet.active && enemy.isactive && CheckCollisionCircleRec(bullet.position, bullet.radius, enemy.enemyRect)) {
-					bullet.active = false;
-					enemy.isactive = false;
+				enemy.Update();
+			}
+			//collision enemy bullet
+			for (auto& bullet : bullets) {
+				for (auto& enemy : enemies) {
+					if (bullet.active && enemy.isactive && CheckCollisionCircleRec(bullet.position, bullet.radius, enemy.enemyRect)) {
+						bullet.active = false;
+						enemy.isactive = false;
+						score += 10;
+					}
 				}
 			}
+			if (IsKeyPressed(KEY_P)) {
+				currentState = Pause;
+			}
+
+			for (auto& enemy : enemies) {
+				if (enemy.isactive && CheckCollisionRecs(enemy.enemyRect, player.playerRec)) {
+					currentState = GameOver;
+				}
+			}
+			DrawText(TextFormat("Score: %d", score), 600, 30, 20, GREEN);
+			break;
+		case Pause:
+			if (IsKeyPressed(KEY_P)) {
+				currentState = Play;
+			}
+			break;
+		case GameOver:
+			if (IsKeyPressed(KEY_R)) {
+				enemies.clear();
+				bullets.clear();
+				spawnTimer = 0;
+				score = 0;
+				currentState = Menu;
+			}
+			break;
 		}
 		BeginDrawing();
 		ClearBackground(BLACK);
-		player.Draw();
-		for (int i = 0; i < bullets.size(); i++) {
-			bullets[i].Draw();
+		
+		switch (currentState) {
+		case Menu:
+			DrawText("Space Invaders Menu", 200, 350, 30, YELLOW);
+			DrawText("Press Enter to play", 200, 450, 20, LIGHTGRAY);
+			break;
+		case Play:
+		case Pause:
+			player.Draw();
+			for (int i = 0; i < bullets.size(); i++) {
+				bullets[i].Draw();
+			}
+			for (auto& enemy : enemies) {
+				enemy.Draw();
+			}
+			if (currentState == Pause) {
+				DrawText("PAUSED", 250, 350, 40, YELLOW);
+			}
+			DrawText(TextFormat("Score: %d", score), 600, 30, 20, GREEN);
+			break;
+
+		case GameOver:
+			DrawText("Game Over", 250, 350, 40, RED);
+			DrawText("Press R to restart", 200, 400, 30, GRAY);
+			break;
+
 		}
-		for (auto& enemy : enemies) {
-			enemy.Draw();
-		}
+		
 		EndDrawing();
 
 	}
