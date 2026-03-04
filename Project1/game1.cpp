@@ -62,6 +62,28 @@ public:
 	}
 };
 
+class Enemy {
+public:
+	bool isactive = true;
+	Rectangle enemyRect;
+	Enemy(float x, float y) {
+		enemyRect = { x,y,30,30 };
+	};
+	void Draw() {
+		if (isactive) {
+			DrawRectangleRec(enemyRect, RED);
+		}
+	};
+	void Update() {
+		if (isactive) {
+			enemyRect.y += 1.5;
+			if (enemyRect.y > 700) {
+				isactive = false;
+			}
+		}
+	};
+};
+
 
 int main() {
 
@@ -69,8 +91,23 @@ int main() {
 	SetTargetFPS(60);
 	Player player;
 	std::vector<Bullet> bullets;
+	std::vector<Enemy> enemies;
+	int spacing = 80;
+	float spawnTimer = 0;
+	float spawnInterval = 4.5;
+
+	for (int i = 0; i < 7; i++) {
+		enemies.push_back(Enemy(100 + i * spacing, 40));
+	}
 	//game loop
 	while (!WindowShouldClose()) {
+		spawnTimer += GetFrameTime();
+		if (spawnTimer >= spawnInterval) {
+			for (int i = 0; i < 7; i++) {
+				enemies.push_back(Enemy(100 + i * spacing, 40));
+			}
+			spawnTimer = 0;
+		}
 		//Update logic
 		player.Update();
 		if (IsKeyPressed(KEY_SPACE)) {
@@ -79,11 +116,26 @@ int main() {
 		for (int i = 0; i < bullets.size(); i++) {
 			bullets[i].Update();
 		}
+		for (auto& enemy : enemies) {
+			enemy.Update();
+		}
+		//collision enemy bullet
+		for (auto& bullet : bullets) {
+			for (auto& enemy : enemies) {
+				if (bullet.active && enemy.isactive && CheckCollisionCircleRec(bullet.position, bullet.radius, enemy.enemyRect)) {
+					bullet.active = false;
+					enemy.isactive = false;
+				}
+			}
+		}
 		BeginDrawing();
 		ClearBackground(BLACK);
 		player.Draw();
 		for (int i = 0; i < bullets.size(); i++) {
 			bullets[i].Draw();
+		}
+		for (auto& enemy : enemies) {
+			enemy.Draw();
 		}
 		EndDrawing();
 
